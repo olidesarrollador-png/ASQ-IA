@@ -1,0 +1,6 @@
+{
+  "name": "Power BI Google",
+  "description": "Deep black dynamic dashboard with Google integrations, weather, digital clock, AI assistant, and a Google dinosaur mini-game.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
