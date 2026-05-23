@@ -1,6 +1,6 @@
 {
-  "name": "Power BI Google",
-  "description": "Deep black dynamic dashboard with Google integrations, weather, digital clock, AI assistant, and a Google dinosaur mini-game.",
+  "name": "Ask AI",
+  "description": "Premium futuristic dark mode interface styled like cinematic iOS mockups, featuring real Gemini AI integration, customizable backgrounds, YouTube Music controllers, and Gmail workspaces.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

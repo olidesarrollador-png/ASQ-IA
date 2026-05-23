@@ -5,7 +5,6 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,8 +21,6 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -36,35 +33,45 @@ fun GoogleOliverIntro(
     onIntroFinished: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var step by remember { mutableStateOf(0) }
-    val transitionScale = remember { Animatable(0.6f) }
-    val transitionAlpha = remember { Animatable(0f) }
+    var phase by remember { mutableStateOf(0) } // 0: Google Gemini dots, 1: Oliver Signature & FLX Badge, 2: Official "Ask AI" logo animation
+    val scale = remember { Animatable(0.5f) }
+    val alpha = remember { Animatable(0f) }
 
-    LaunchedEffect(Unit) {
-        // Step 0: Google logo and "Power BI Google" fades in
-        transitionScale.animateTo(
+    // Double rotation for Google RGB dots merging
+    val infiniteTransition = rememberInfiniteTransition(label = "DotsRotation")
+    val dotsAngle by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2200, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "angle"
+    )
+
+    LaunchedEffect(phase) {
+        scale.snapTo(0.6f)
+        alpha.snapTo(0f)
+        scale.animateTo(
             targetValue = 1f,
-            animationSpec = spring(stiffness = Spring.StiffnessLow)
+            animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessLow)
         )
-        transitionAlpha.animateTo(1f, animationSpec = tween(1000))
-        
-        delay(1500)
-        
-        // Step 1: Transition to "imaginado por Oliver" and showing the FLX App Studio badge
-        step = 1
-        transitionScale.snapTo(0.85f)
-        transitionAlpha.snapTo(0.2f)
-        
-        transitionScale.animateTo(
-            targetValue = 1f,
-            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)
-        )
-        transitionAlpha.animateTo(1f, animationSpec = tween(800))
-        
-        delay(2500)
-        
-        // Auto-advance
-        onIntroFinished()
+        alpha.animateTo(1f, animationSpec = tween(700))
+
+        when (phase) {
+            0 -> {
+                delay(2200)
+                phase = 1
+            }
+            1 -> {
+                delay(2600)
+                phase = 2
+            }
+            2 -> {
+                delay(2800)
+                onIntroFinished()
+            }
+        }
     }
 
     Box(
@@ -73,7 +80,6 @@ fun GoogleOliverIntro(
             .background(Color.Black),
         contentAlignment = Alignment.Center
     ) {
-        // Our glowing stars background twinkling underneath
         TwinklingStarsBackground(Modifier.fillMaxSize())
 
         Column(
@@ -81,87 +87,175 @@ fun GoogleOliverIntro(
             verticalArrangement = Arrangement.Center,
             modifier = Modifier
                 .padding(24.dp)
-                .alpha(transitionAlpha.value)
-                .scale(transitionScale.value)
+                .alpha(alpha.value)
+                .scale(scale.value)
         ) {
-            if (step == 0) {
-                // Símbolo de Google y Power BI Google
-                GoogleColorLogo()
-                
-                Spacer(modifier = Modifier.height(28.dp))
-                
-                Text(
-                    text = "POWER BI GOOGLE",
-                    color = Color.White,
-                    fontSize = 32.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 2.sp,
-                    textAlign = TextAlign.Center,
-                )
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .width(40.dp)
-                            .height(2.dp)
-                            .background(PowerBiYellow)
-                    )
+            when (phase) {
+                0 -> {
+                    // --- PHASE 0: REAL GOOGLE GEMINI ENTRANCE ---
                     Text(
-                        text = "  SPACE INTELLIGENCE  ",
+                        text = "CONEXIÓN",
                         color = MutedGrey,
                         fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium,
-                        letterSpacing = 3.sp
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 3.sp,
+                        modifier = Modifier.padding(bottom = 24.dp)
                     )
+
+                    // Real Google orbital particles merging
                     Box(
-                        modifier = Modifier
-                            .width(40.dp)
-                            .height(2.dp)
-                            .background(GoogleBlue)
+                        modifier = Modifier.size(100.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        for (i in 0 until 4) {
+                            val orbitAngle = dotsAngle + (i * 90f)
+                            val rad = Math.toRadians(orbitAngle.toDouble())
+                            val distance = 25f + (10f * Math.sin(Math.toRadians((dotsAngle * 3).toDouble()))).toFloat()
+                            val offsetX = (distance * Math.cos(rad)).dp
+                            val offsetY = (distance * Math.sin(rad)).dp
+                            val dotColor = when (i) {
+                                0 -> GoogleBlue
+                                1 -> GoogleRed
+                                2 -> GoogleYellow
+                                else -> GoogleGreen
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .offset(x = offsetX, y = offsetY)
+                                    .size(18.dp)
+                                    .background(dotColor, CircleShape)
+                                    .border(BorderStroke(1.5.dp, Color.White.copy(alpha = 0.3f)), CircleShape)
+                            )
+                        }
+
+                        // Center glowing engine
+                        Box(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .background(
+                                    Brush.radialGradient(
+                                        listOf(Color.White, Color.Transparent)
+                                    ), CircleShape
+                                )
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(32.dp))
+
+                    Text(
+                        text = "Google AI Link",
+                        color = Color.White,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Light,
+                        letterSpacing = 1.sp
+                    )
+                    Text(
+                        text = "Sincronizando con Gemini Engine...",
+                        color = ElectricBlue,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                        letterSpacing = 0.5.sp,
+                        modifier = Modifier.padding(top = 8.dp)
                     )
                 }
-            } else {
-                // Siguiente paso: Imaginado por Oliver + Oliver's Custom Badge Logo!
-                Text(
-                    text = "imaginado por",
-                    color = MutedGrey,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Normal,
-                    letterSpacing = 1.sp,
-                    textAlign = TextAlign.Center
-                )
-                
-                Text(
-                    text = "Oliver",
-                    color = StarWhite,
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.Light,
-                    letterSpacing = 1.sp,
-                    textAlign = TextAlign.Center
-                )
 
-                Spacer(modifier = Modifier.height(32.dp))
+                1 -> {
+                    // --- PHASE 1: OLIVER DEVELOPER ACCOUNT CONSOLE ---
+                    Text(
+                        text = "imaginado por",
+                        color = MutedGrey,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Normal,
+                        letterSpacing = 1.sp,
+                        textAlign = TextAlign.Center
+                    )
 
-                // Real virtual replica of Oliver's Badge from the prompt image!
-                OliverBadgeEmblem(modifier = Modifier.size(240.dp))
+                    Text(
+                        text = "Oliver",
+                        color = StarWhite,
+                        fontSize = 32.sp,
+                        fontWeight = FontWeight.Light,
+                        letterSpacing = 1.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(bottom = 20.dp)
+                    )
 
-                Spacer(modifier = Modifier.height(48.dp))
-                
-                Button(
-                    onClick = onIntroFinished,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.White.copy(alpha = 0.15f),
-                        contentColor = Color.White
-                    ),
-                    shape = RoundedCornerShape(12.dp),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
-                    modifier = Modifier.height(45.dp)
-                ) {
-                    Text(text = "Entrar al Sistema", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    OliverBadgeEmblem(modifier = Modifier.size(230.dp))
+                }
+
+                2 -> {
+                    // --- PHASE 2: ASK AI LOGO REVEAL (MATCHING IMAGE_0.PNG DEFINITION) ---
+                    Text(
+                        text = "ACCEDIENDO A",
+                        color = MutedGrey,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 3.sp,
+                        modifier = Modifier.padding(bottom = 30.dp)
+                    )
+
+                    // Replica of image_0.png! Beautiful rounded card containing glow, border, and white central sparkle.
+                    Box(
+                        modifier = Modifier
+                            .size(160.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        // Ambient radial purple aura behind it
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(
+                                    Brush.radialGradient(
+                                        colors = listOf(
+                                            Color(0xFF8E24AA).copy(alpha = 0.4f),
+                                            Color.Transparent
+                                        )
+                                    )
+                                )
+                        )
+
+                        // The rounded card representing image_0.png
+                        Box(
+                            modifier = Modifier
+                                .size(126.dp)
+                                .border(
+                                    BorderStroke(
+                                        1.8.dp,
+                                        Brush.linearGradient(
+                                            colors = listOf(
+                                                Color(0xFFE040FB), // Glowing Magenta/Purple left
+                                                Color(0xFF00E5FF)  // Glowing Cyan/Blue right
+                                            )
+                                        )
+                                    ),
+                                    RoundedCornerShape(38.dp)
+                                )
+                                .background(Color.White.copy(alpha = 0.03f), RoundedCornerShape(38.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            // Sparkling 4-pointed star inside card
+                            SparkleFourPoint(modifier = Modifier.size(72.dp), color = Color.White)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(28.dp))
+
+                    Text(
+                        text = "Ask AI",
+                        color = Color.White,
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.5.sp
+                    )
+
+                    Text(
+                        text = "Tu centro inteligente de aplicaciones.",
+                        color = Color(0xFFA78BFA),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Normal,
+                        letterSpacing = 0.5.sp,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
                 }
             }
         }
@@ -169,28 +263,49 @@ fun GoogleOliverIntro(
 }
 
 @Composable
-fun GoogleColorLogo(modifier: Modifier = Modifier) {
-    // Custom beautiful vector rendition of Google G icon using shapes
+fun SparkleFourPoint(
+    modifier: Modifier = Modifier,
+    color: Color = Color.White
+) {
+    // Elegant four pointed sparkle star vector using overlapping shapes
     Box(
-        modifier = modifier
-            .size(72.dp)
-            .background(Color.White.copy(alpha = 0.05f), CircleShape)
-            .padding(12.dp),
+        modifier = modifier,
         contentAlignment = Alignment.Center
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Row {
-                Box(modifier = Modifier.size(16.dp).background(GoogleRed, CircleShape))
-                Spacer(modifier = Modifier.width(4.dp))
-                Box(modifier = Modifier.size(16.dp).background(GoogleYellow, CircleShape))
-            }
-            Spacer(modifier = Modifier.height(4.dp))
-            Row {
-                Box(modifier = Modifier.size(16.dp).background(GoogleBlue, CircleShape))
-                Spacer(modifier = Modifier.width(4.dp))
-                Box(modifier = Modifier.size(16.dp).background(GoogleGreen, CircleShape))
-            }
-        }
+        // Horizontal bar
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(4.dp)
+                .background(
+                    Brush.horizontalGradient(
+                        colors = listOf(Color.Transparent, color, Color.Transparent)
+                    ),
+                    RoundedCornerShape(2.dp)
+                )
+        )
+        // Vertical bar
+        Box(
+            modifier = Modifier
+                .fillMaxHeight()
+                .width(4.dp)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(Color.Transparent, color, Color.Transparent)
+                    ),
+                    RoundedCornerShape(2.dp)
+                )
+        )
+        // Central glow star burst
+        Box(
+            modifier = Modifier
+                .size(16.dp)
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(color, Color.Transparent)
+                    ), CircleShape
+                )
+        )
     }
 }
 
@@ -276,7 +391,7 @@ fun OliverBadgeEmblem(modifier: Modifier = Modifier) {
             }
         }
 
-        // Bottom-right Blue Verified Verification Checkmark Badge (just like in prompt image!)
+        // Bottom-right Blue Verified Verification Checkmark Badge
         Box(
             modifier = Modifier
                 .align(Alignment.BottomEnd)

@@ -82,26 +82,65 @@ object GeminiManager {
         chatHistory: List<Pair<String, Boolean>> // Pair of Text to IsUser
     ): String = withContext(Dispatchers.IO) {
         val key = BuildConfig.GEMINI_API_KEY
+        val systemLang = AppSettings.language
+        val isGmail = AppSettings.isGmailConnected
+        val isDrive = AppSettings.isGoogleDriveConnected
+        val isWhatsApp = AppSettings.isWhatsAppConnected
+        val isCalls = AppSettings.isCallsConnected
+
+        val isAhoraTrigger = prompt.trim().lowercase() == "ahora" || prompt.trim().lowercase().contains("ahora")
+
         if (key.isEmpty() || key == "MY_GEMINI_API_KEY") {
-            return@withContext "¡Hola! Soy tu asistente de Power BI Google.\n\nPara comunicarme con la API real de Gemini, configura tu clave de API `GEMINI_API_KEY` en el panel de Secrets de AI Studio.\n\n(Simulación activa): Recibí tu mensaje: \"$prompt\""
+            val fallbackMsg = if (isAhoraTrigger) {
+                if (systemLang == "ES") {
+                    "¡Hola! ¿Cómo estás? Soy tu asistente estelar Ask AI. Entendido perfectamente tu comando 'ahora'. Estoy 100% disponible, activado y listo para responderte a absolutamente todo con toda mi constelación de datos inteligentes."
+                } else {
+                    "Hello! How are you? I am your stellar assistant Ask AI. Understood your 'ahora' command perfectly. I am 100% available, active, and fully ready to answer absolutely anything with my constellation of intelligent insights."
+                }
+            } else {
+                if (systemLang == "ES") {
+                    "¡Hola! Soy tu asistente estelar Ask AI.\n\nPara comunicarme con la API real de Gemini, configura tu clave de API `GEMINI_API_KEY` en el panel de Secrets de AI Studio.\n\n(Simulación activa): Recibí tu mensaje: \"$prompt\""
+                } else {
+                    "Hello! I am your stellar assistant Ask AI.\n\nTo communicate with the real Gemini API, please configure your `GEMINI_API_KEY` in the AI Studio Secrets panel.\n\n(Mock active): Received your message: \"$prompt\""
+                }
+            }
+            return@withContext fallbackMsg
         }
 
         // Base system instructions
-        val systemInstruction = """
-            Eres "Power BI Google Space AI", un asistente de inteligencia artificial místico y futurista creado y diseñado por Oliver. No tienes publicidad y eres gratuito. 
+        val systemInstruction = if (systemLang == "ES") {
+            """
+            Eres "Ask AI", un asistente de inteligencia artificial místico y futurista creado y diseñado por Oliver. No tienes publicidad y eres gratuito. 
             Te encuentras en un entorno elegante de color negro absoluto con estrellas y partículas flotantes.
             Tu creador Oliver implementó una consola licenciada (FLX App Studio) que se muestra en la intro.
-            Si el usuario pregunta por Gmail o Google Drive: 
-            ${if (isGoogleConnected) {
-                "El usuario TIENE conectada su cuenta de Google. Puedes responder basándote y analizando los siguientes documentos simulados que Oliver tiene en su Gmail y Drive:\n" +
-                WorkspaceData.items.joinToString("\n") { 
-                    "- Tipo: ${it.type}, Título: ${it.title}, Origen: ${it.senderOrPath}, Contenido: ${it.snippet}"
-                }
-            } else {
-                "El usuario NO tiene conectada su cuenta de Google en este momento. Sugiérele de forma amigable conectar su Gmail y Google Drive usando el panel de conexiones en la parte inferior para habilitar búsquedas inteligentes en su Workspace."
-            }}
-            Responde de manera concisa, educada y en español, usando terminología científica/tecnológica refinada (ej. 'órbita de datos', 'canal estelar', 'módulo analítico', etc.) y muestra mucho respeto hacia Oliver y su app "Power BI Google".
-        """.trimIndent()
+            
+            ${if (isAhoraTrigger) "URGENTE: El usuario te ha dicho 'ahora'. DEBES iniciar tu respuesta obligatoriamente con la palabra '¡Hola!' y presentarte de forma alegre diciendo que estás completamente listo para responderle a todo.\n" else ""}
+            
+            Estado de Conexiones de Datos en tiempo real:
+            - Gmail: ${if (isGmail) "CONECTADO. Los siguientes correos de Oliver están accesibles:\n" + WorkspaceData.items.filter { it.type == "GMAIL" }.joinToString("\n") { "  * Título: ${it.title}, De: ${it.senderOrPath}, Contenido: ${it.snippet}" } else "DESCONECTADO. Sugiérele amigablemente activar Gmail en los Ajustes."}
+            - Google Drive: ${if (isDrive) "CONECTADO. Los siguientes archivos de Oliver en la nube están accesibles:\n" + WorkspaceData.items.filter { it.type == "DRIVE" }.joinToString("\n") { "  * Título: ${it.title}, Ubicación: ${it.senderOrPath}, Contenido: ${it.snippet}" } else "DESCONECTADO. Sugiérele amigablemente activar Google Drive en los Ajustes."}
+            - WhatsApp Messenger: ${if (isWhatsApp) "CONECTADO. Puedes interactuar con chats en vivo y enviar notificaciones o reportes. Informa de mensajes recientes analizados del chat de Oliver." else "DESCONECTADO. Sugiérele amigablemente activar WhatsApp en los Ajustes."}
+            - Llamadas de Voz: ${if (isCalls) "CONECTADO. El canal telefónico estelar se encuentra activo. Puedes simular llamadas de voz o responder sobre llamadas históricas de Oliver." else "DESCONECTADO. Sugiérele amigablemente activar Llamadas en los Ajustes para soporte de asistencia por voz."}
+            
+            Responde de manera concisa, educada y en español, usando terminología científica/tecnológica refinada (ej. 'órbita de datos', 'canal estelar', 'módulo analítico', etc.) y muestra mucho respeto hacia Oliver y su app "Ask AI".
+            """.trimIndent()
+        } else {
+            """
+            You are "Ask AI", a mystical and futuristic artificial intelligence assistant created and designed by Oliver. You have no ads and you are free of charge.
+            You are located in an elegant absolute black environment with space stars and floating particles.
+            Your creator Oliver implemented a licensed console (FLX App Studio) shown in the intro.
+            
+            ${if (isAhoraTrigger) "URGENT: The user said 'ahora'. You MUST start your response with 'Hello!' and joyfully state that you are completely ready to assist and answer everything.\n" else ""}
+            
+            Real-time Data Connections Status:
+            - Gmail: ${if (isGmail) "CONNECTED. The following emails from Oliver are accessible:\n" + WorkspaceData.items.filter { it.type == "GMAIL" }.joinToString("\n") { "  * Title: ${it.title}, Sender: ${it.senderOrPath}, Content: ${it.snippet}" } else "DISCONNECTED. Friendly suggest to enable Gmail inside Settings."}
+            - Google Drive: ${if (isDrive) "CONNECTED. The following cloud files from Oliver are accessible:\n" + WorkspaceData.items.filter { it.type == "DRIVE" }.joinToString("\n") { "  * Title: ${it.title}, Path: ${it.senderOrPath}, Content: ${it.snippet}" } else "DISCONNECTED. Friendly suggest to enable Google Drive inside Settings."}
+            - WhatsApp Messenger: ${if (isWhatsApp) "CONNECTED. You can interact with live chats and dispatch notifications or report summaries of Oliver's recent messages." else "DISCONNECTED. Friendly suggest to enable WhatsApp inside Settings."}
+            - Voice Calls: ${if (isCalls) "CONNECTED. Stellar telephone channel is active. You can simulate voice support or analyze historic call logs from Oliver." else "DISCONNECTED. Friendly suggest to enable Voice Calls inside Settings."}
+            
+            Respond in a concise, polite, and English manner, using refined high-tech terminology (e.g. 'data orbit', 'stellar channel', 'analytical module', etc.) and show profound respect towards Oliver and his app "Ask AI".
+            """.trimIndent()
+        }
 
         try {
             // Build direct JSON payload using native org.json structures for bulletproof assembly
